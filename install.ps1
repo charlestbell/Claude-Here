@@ -30,9 +30,27 @@ Start-Process ('claude://code/new?folder=' + [uri]::EscapeDataString($Path))
     Write-Host 'Claude Here installer' -ForegroundColor Cyan
     Write-Host ''
 
-    # The claude:// link handler is registered by the Claude desktop app
+    # Find the Claude desktop app. The Microsoft Store version registers claude:// inside its
+    # package, so it has no HKEY_CLASSES_ROOT\claude key outside the app; look for the package too.
+    $claudeExe = $null
     $handler = Get-ItemProperty 'Registry::HKEY_CLASSES_ROOT\claude\shell\open\command' -ErrorAction SilentlyContinue
-    if (-not $handler) {
+    if ($handler -and $handler.'(default)' -match '^"([^"]+)"' -and (Test-Path $Matches[1])) {
+        $claudeExe = $Matches[1]
+    }
+    if (-not $claudeExe) {
+        try {
+            $package = Get-AppxPackage -Name 'Claude' -ErrorAction Stop | Select-Object -First 1
+            if ($package) {
+                $candidate = Join-Path $package.InstallLocation 'app\claude.exe'
+                $claudeExe = if (Test-Path $candidate) { $candidate } else { 'store' }
+            }
+        } catch { }
+    }
+    if (-not $claudeExe) {
+        $candidate = Join-Path $env:LOCALAPPDATA 'AnthropicClaude\claude.exe'
+        if (Test-Path $candidate) { $claudeExe = $candidate }
+    }
+    if (-not $claudeExe) {
         Write-Host 'The Claude desktop app does not seem to be installed.' -ForegroundColor Yellow
         Write-Host 'Install it from https://claude.ai/download, then run this installer again.'
         Write-Host ''
@@ -47,8 +65,7 @@ Start-Process ('claude://code/new?folder=' + [uri]::EscapeDataString($Path))
     # Save the Claude app's own icon next to the launcher. A copy keeps working after Claude
     # updates move the app, and Explorer can always read it.
     $icon = $null
-    if ($handler.'(default)' -match '^"([^"]+)"' -and (Test-Path $Matches[1])) {
-        $claudeExe = $Matches[1]
+    if ($claudeExe -ne 'store') {
         $icon = $claudeExe
         try {
             Add-Type -AssemblyName System.Drawing
