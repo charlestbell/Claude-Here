@@ -44,15 +44,37 @@ Start-Process ('claude://code/new?folder=' + [uri]::EscapeDataString($Path))
 
     $command = "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$launcher`" `"%V`""
 
-    # Use the Claude app's own icon when its path can be found
+    # Save the Claude app's own icon next to the launcher. A copy keeps working after Claude
+    # updates move the app, and Explorer can always read it.
     $icon = $null
-    if ($handler.'(default)' -match '^"([^"]+)"') { $icon = $Matches[1] }
+    if ($handler.'(default)' -match '^"([^"]+)"' -and (Test-Path $Matches[1])) {
+        $claudeExe = $Matches[1]
+        $icon = $claudeExe
+        try {
+            Add-Type -AssemblyName System.Drawing
+            $icoPath = Join-Path $installDir 'claude.ico'
+            # Icon.Save() drops to 16 colors, so write a one-image .ico holding a full-color PNG
+            $bitmap = [Drawing.Icon]::ExtractAssociatedIcon($claudeExe).ToBitmap()
+            $png = New-Object IO.MemoryStream
+            $bitmap.Save($png, [Drawing.Imaging.ImageFormat]::Png)
+            $pngBytes = $png.ToArray()
+            $ico = New-Object IO.MemoryStream
+            $w = New-Object IO.BinaryWriter($ico)
+            $w.Write([uint16]0); $w.Write([uint16]1); $w.Write([uint16]1)          # header: icon, 1 image
+            $w.Write([byte]$bitmap.Width); $w.Write([byte]$bitmap.Height)          # directory entry
+            $w.Write([byte]0); $w.Write([byte]0); $w.Write([uint16]1); $w.Write([uint16]32)
+            $w.Write([uint32]$pngBytes.Length); $w.Write([uint32]22)
+            $w.Write($pngBytes)
+            [IO.File]::WriteAllBytes($icoPath, $ico.ToArray())
+            $icon = $icoPath
+        } catch { }
+    }
 
     foreach ($k in $menuKeys) {
         $key = "HKCU:\Software\Classes\$k\ClaudeHere"
         New-Item -Path "$key\command" -Force | Out-Null
         Set-ItemProperty -Path $key -Name '(default)' -Value $label
-        if ($icon -and (Test-Path $icon)) { Set-ItemProperty -Path $key -Name 'Icon' -Value $icon }
+        if ($icon) { Set-ItemProperty -Path $key -Name 'Icon' -Value $icon }
         Set-ItemProperty -Path "$key\command" -Name '(default)' -Value $command
     }
 

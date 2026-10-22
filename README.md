@@ -80,8 +80,8 @@ Update the Claude desktop app. Opening a folder from a link needs a recent versi
 **A window flashes for a moment when I click it.**
 That's normal. A tiny hidden PowerShell script passes the folder to Claude, and Windows sometimes shows its window briefly.
 
-**The menu item lost its icon after a Claude update.**
-Run the installer again to pick up the new icon location.
+**The menu item has no Claude icon.**
+Run the installer again. It copies the icon from your installed Claude app, so Claude needs to be installed when you run it.
 
 ---
 
@@ -89,8 +89,8 @@ Run the installer again to pick up the new icon location.
 
 The installer does three small things:
 
-1. Saves a short launcher script to `%LOCALAPPDATA%\ClaudeHere\open-in-claude.ps1`.
-2. Adds an **Open in Claude** entry to your right-click menu, under `HKEY_CURRENT_USER\Software\Classes` for folders, folder backgrounds and drives. It touches only your own user account, so no admin rights are needed.
+1. Saves a short launcher script to `%LOCALAPPDATA%\ClaudeHere\open-in-claude.ps1`, plus a copy of the Claude app's icon (`claude.ico`) taken from your own installed app. The copy keeps the menu icon working after Claude updates.
+2. Adds an **Open in Claude** entry, with the Claude icon, to your right-click menu, under `HKEY_CURRENT_USER\Software\Classes` for folders, folder backgrounds and drives. It touches only your own user account, so no admin rights are needed.
 3. When you click the entry, the launcher opens this link with your folder filled in:
 
    ```
