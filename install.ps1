@@ -1,6 +1,7 @@
 # Claude Here installer
-# Adds "Open in Claude" to the Windows right-click menu for folders, drives and folder backgrounds.
-# Clicking it opens a new Claude Code session in the Claude desktop app for that folder.
+# Adds "Open in Claude" to the Windows right-click menu for files, folders, drives and folder backgrounds.
+# Clicking it opens a new Claude Code session in the Claude desktop app for that folder
+# (for a file: the folder it is in, with the file's name filled into the message box).
 #
 # Run it with:  irm https://raw.githubusercontent.com/charlestbell/Claude-Here/main/install.ps1 | iex
 # or double-click Install.cmd from a downloaded copy of this repo.
@@ -10,12 +11,19 @@
 
     $installDir = Join-Path $env:LOCALAPPDATA 'ClaudeHere'
     $launcher   = Join-Path $installDir 'open-in-claude.ps1'
-    $menuKeys   = 'Directory\shell', 'Directory\Background\shell', 'Drive\shell'
     $label      = 'Open in Claude'
+    # Menu key under HKCU\Software\Classes -> what Explorer passes for the clicked item
+    $menuKeys   = [ordered]@{
+        'Directory\shell'            = '%V'
+        'Directory\Background\shell' = '%V'
+        'Drive\shell'                = '%V'
+        '*\shell'                    = '%1'   # any file
+    }
 
-    # The launcher turns the clicked folder into a claude://code/new link the desktop app understands
+    # The launcher turns the clicked item into a claude://code/new link the desktop app understands
     $launcherCode = @'
-# Claude Here launcher: opens a new Claude Code session in the Claude desktop app for the given folder.
+# Claude Here launcher: opens a new Claude Code session in the Claude desktop app for the given
+# folder, or for a file's folder with the file's name filled into the message box.
 # https://github.com/charlestbell/Claude-Here
 param([string]$Path)
 
@@ -23,7 +31,13 @@ param([string]$Path)
 $Path = $Path.Trim('"')
 if ($Path -match '^[A-Za-z]:$') { $Path += '\' }
 
-Start-Process ('claude://code/new?folder=' + [uri]::EscapeDataString($Path))
+if (Test-Path -LiteralPath $Path -PathType Leaf) {
+    $folder = [IO.Path]::GetDirectoryName($Path)
+    $prompt = '@' + [IO.Path]::GetFileName($Path) + ' '
+    Start-Process ('claude://code/new?folder=' + [uri]::EscapeDataString($folder) + '&q=' + [uri]::EscapeDataString($prompt))
+} else {
+    Start-Process ('claude://code/new?folder=' + [uri]::EscapeDataString($Path))
+}
 '@
 
     Write-Host ''
@@ -60,8 +74,6 @@ Start-Process ('claude://code/new?folder=' + [uri]::EscapeDataString($Path))
     New-Item -ItemType Directory -Path $installDir -Force | Out-Null
     Set-Content -Path $launcher -Value $launcherCode -Encoding UTF8
 
-    $command = "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$launcher`" `"%V`""
-
     # Save the Claude app's own icon next to the launcher. A copy keeps working after Claude
     # updates move the app, and Explorer can always read it.
     $icon = $null
@@ -87,15 +99,17 @@ Start-Process ('claude://code/new?folder=' + [uri]::EscapeDataString($Path))
         } catch { }
     }
 
-    foreach ($k in $menuKeys) {
-        $key = "HKCU:\Software\Classes\$k\ClaudeHere"
-        New-Item -Path "$key\command" -Force | Out-Null
-        Set-ItemProperty -Path $key -Name '(default)' -Value $label
-        if ($icon) { Set-ItemProperty -Path $key -Name 'Icon' -Value $icon }
-        Set-ItemProperty -Path "$key\command" -Name '(default)' -Value $command
+    # The .NET registry API, because PowerShell's registry paths treat the * key as a wildcard
+    foreach ($k in $menuKeys.Keys) {
+        $command = "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$launcher`" `"$($menuKeys[$k])`""
+        $key = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey("Software\Classes\$k\ClaudeHere")
+        $key.SetValue('', $label)
+        if ($icon) { $key.SetValue('Icon', $icon) }
+        $key.CreateSubKey('command').SetValue('', $command)
+        $key.Close()
     }
 
-    Write-Host "Done! Right-click any folder and choose '$label'." -ForegroundColor Green
+    Write-Host "Done! Right-click any file or folder and choose '$label'." -ForegroundColor Green
     if ([Environment]::OSVersion.Version.Build -ge 22000) {
         Write-Host "On Windows 11 it is under 'Show more options' (or hold Shift while you right-click)."
     }

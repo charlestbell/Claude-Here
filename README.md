@@ -1,11 +1,11 @@
 # Claude Here: "Open in Claude" right-click menu for Windows
 
-Right-click any folder in Windows File Explorer and choose **Open in Claude**. The Claude desktop app opens a new **Claude Code** session with that folder already selected.
+Right-click any file or folder in Windows File Explorer and choose **Open in Claude**. The Claude desktop app opens a new **Claude Code** session with that folder already selected. For a file, it opens the file's folder and puts the file's name in the message box, ready for your question.
 
 No more browsing for your project folder inside the app. Just right-click and go.
 
 - Works on **Windows 10 and Windows 11**
-- Works on folders, drives, and the empty space inside an open folder
+- Works on files, folders, drives, and the empty space inside an open folder
 - No admin rights needed, and it changes nothing outside your own user account
 - Uninstalls cleanly in one step
 
@@ -43,9 +43,10 @@ You need the **Claude desktop app** for Windows. Get it from [claude.ai/download
 
 ## How to use it
 
-1. In File Explorer, right-click a folder, or right-click empty space inside an open folder.
+1. In File Explorer, right-click a file, a folder, or empty space inside an open folder.
 2. Choose **Open in Claude**.
 3. Claude opens a new Code session and asks you to confirm the folder. Confirm it and start working.
+   - If you clicked a **file**, the session opens in the folder that contains it, and the message box already holds `@` plus the file's name. Type your question after it, for example: `@report.csv what are the totals by month?`
 
 **On Windows 11**, Windows tucks extra menu items one level down. Click **Show more options** at the bottom of the right-click menu, or hold **Shift** while you right-click to jump straight to the full menu.
 
@@ -90,12 +91,14 @@ Run the installer again. It copies the icon from your installed Claude app, so C
 The installer does three small things:
 
 1. Saves a short launcher script to `%LOCALAPPDATA%\ClaudeHere\open-in-claude.ps1`, plus a copy of the Claude app's icon (`claude.ico`) taken from your own installed app. The copy keeps the menu icon working after Claude updates.
-2. Adds an **Open in Claude** entry, with the Claude icon, to your right-click menu, under `HKEY_CURRENT_USER\Software\Classes` for folders, folder backgrounds and drives. It touches only your own user account, so no admin rights are needed.
+2. Adds an **Open in Claude** entry, with the Claude icon, to your right-click menu, under `HKEY_CURRENT_USER\Software\Classes` for files (`*`), folders, folder backgrounds and drives. It touches only your own user account, so no admin rights are needed.
 3. When you click the entry, the launcher opens this link with your folder filled in:
 
    ```
    claude://code/new?folder=<your folder>
    ```
+
+   For a file, it uses the file's folder and adds `&q=@<file name>` to fill in the message box.
 
    The Claude desktop app handles that link and opens a new Claude Code session for the folder. This link format is documented in Anthropic's help article [Open Claude Desktop with a link](https://support.claude.com/en/articles/14729294-open-claude-desktop-with-a-link).
 
@@ -117,4 +120,4 @@ The uninstaller removes those menu entries and the launcher folder.
 
 [MIT](LICENSE). Free to use, change and share.
 
-<!-- Keywords: Claude, Claude Code, Claude desktop, Anthropic, Windows, File Explorer, right-click, context menu, "Open with Claude", "Open in Claude", "Claude here", open folder in Claude Code, Windows 11 context menu, shell extension -->
+<!-- Keywords: Claude, Claude Code, Claude desktop, Anthropic, Windows, File Explorer, right-click, context menu, "Open with Claude", "Open in Claude", "Claude here", open folder in Claude Code, open file in Claude Code, Windows 11 context menu, shell extension -->

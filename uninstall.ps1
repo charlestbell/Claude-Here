@@ -7,8 +7,9 @@
 & {
     $installDir = Join-Path $env:LOCALAPPDATA 'ClaudeHere'
 
-    foreach ($k in 'Directory\shell', 'Directory\Background\shell', 'Drive\shell') {
-        Remove-Item "HKCU:\Software\Classes\$k\ClaudeHere" -Recurse -Force -ErrorAction SilentlyContinue
+    # The .NET registry API, because PowerShell's registry paths treat the * key as a wildcard
+    foreach ($k in 'Directory\shell', 'Directory\Background\shell', 'Drive\shell', '*\shell') {
+        [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree("Software\Classes\$k\ClaudeHere", $false)
     }
     Remove-Item $installDir -Recurse -Force -ErrorAction SilentlyContinue
 
